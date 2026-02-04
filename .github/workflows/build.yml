@@ -1,0 +1,52 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build CLIProxyAPI
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Build for Linux
+      run: |
+        go build -o CLIProxyAPI-linux-amd64 ./cmd/server
+
+    - name: Build for Windows
+      run: |
+        GOOS=windows GOARCH=amd64 go build -o CLIProxyAPI-windows-amd64.exe ./cmd/server
+
+    - name: Build for macOS
+      run: |
+        GOOS=darwin GOARCH=amd64 go build -o CLIProxyAPI-darwin-amd64 ./cmd/server
+        GOOS=darwin GOARCH=arm64 go build -o CLIProxyAPI-darwin-arm64 ./cmd/server
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: CLIProxyAPI-binaries
+        path: |
+          CLIProxyAPI-*
+        retention-days: 30
+
+    - name: Create Release (on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          CLIProxyAPI-*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
